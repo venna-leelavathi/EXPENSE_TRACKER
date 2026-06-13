@@ -1,20 +1,13 @@
-import csv
-import os
-from datetime import datetime
-
-FILE_NAME = "expenses.csv"
-
-# Create CSV file if not exists
-def initialize_file():
-    if not os.path.exists(FILE_NAME):
-        with open(FILE_NAME, "w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(["id", "date", "description", "amount", "category"])
-
-
-# Generate unique ID
-def generate_id():
-    return int(datetime.now().timestamp())
+from utils import (
+    initialize_file,
+    generate_id,
+    read_expenses,
+    write_expenses,
+    append_expense,
+    print_expense_table,
+    calculate_total,
+    format_expense,
+)
 
 
 # Add Expense
@@ -24,7 +17,7 @@ def add_expense():
 
     try:
         amount = float(input("Enter amount: "))
-    except:
+    except ValueError:
         print("Amount must be numeric")
         return
 
@@ -34,88 +27,49 @@ def add_expense():
         return
 
     expense_id = generate_id()
-
-    with open(FILE_NAME, "a", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow([expense_id, date, description, amount, category])
-
+    append_expense([expense_id, date, description, amount, category])
     print("Expense added successfully")
 
 
 # View All Expenses
 def view_expenses():
-    total = 0
-    count = 0
-
-    print("\nID | Date | Description | Amount | Category")
-    print("-"*50)
-
-    with open(FILE_NAME, "r") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            print(row["id"], row["date"], row["description"], row["amount"], row["category"])
-            total += float(row["amount"])
-            count += 1
-
-    print("-"*50)
-    print("Total Expenses:", count)
-    print("Total Amount:", total)
+    expenses = read_expenses()
+    print_expense_table(expenses)
+    print("Total Expenses:", len(expenses))
+    print("Total Amount:", calculate_total(expenses))
 
 
 # Search by Category
 def search_category():
     search = input("Enter category to search: ").lower()
-    subtotal = 0
+    expenses = read_expenses()
+    matched = [row for row in expenses if row["category"].lower() == search]
 
     print("\nResults:\n")
-
-    with open(FILE_NAME, "r") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            if row["category"].lower() == search:
-                print(row["id"], row["date"], row["description"], row["amount"], row["category"])
-                subtotal += float(row["amount"])
-
-    print("Subtotal for category:", subtotal)
+    for row in matched:
+        print(format_expense(row))
+    print("Subtotal for category:", calculate_total(matched))
 
 
 # Monthly Total
 def monthly_total():
     month = input("Enter month (YYYY-MM): ")
-    total = 0
-
-    with open(FILE_NAME, "r") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            if row["date"].startswith(month):
-                total += float(row["amount"])
-
-    print("Total expenses for", month, "=", total)
+    expenses = read_expenses()
+    matched = [row for row in expenses if row["date"].startswith(month)]
+    print("Total expenses for", month, "=", calculate_total(matched))
 
 
 # Delete by ID
 def delete_expense():
     delete_id = input("Enter ID to delete: ")
-    rows = []
-    found = False
+    expenses = read_expenses()
+    remaining = [row for row in expenses if row["id"] != delete_id]
 
-    with open(FILE_NAME, "r") as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            if row["id"] != delete_id:
-                rows.append(row)
-            else:
-                found = True
-
-    if not found:
+    if len(remaining) == len(expenses):
         print("ID not found")
         return
 
-    with open(FILE_NAME, "w", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=["id","date","description","amount","category"])
-        writer.writeheader()
-        writer.writerows(rows)
-
+    write_expenses(remaining)
     print("Expense deleted successfully")
 
 
